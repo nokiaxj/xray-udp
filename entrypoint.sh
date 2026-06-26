@@ -312,26 +312,29 @@ generate_config() {
             }
         },
 		{
-            "port":${UDP1},
-            "listen":"127.0.0.1",
-            "protocol":"hysteria",
-            "settings":{
-			    "version": 2,
-                "users": [
-                  {
-                    "auth": "${UUID}",
-                    "level": 0
-                  }
-                ]
+           "port": 16152,
+           "listen": "127.0.0.1",
+           "protocol": "hysteria",
+           "settings": {
+                "auth": "7cc7f65e-7641-436a-8dde-5d49b5b183fb",
+                "level": 0
+           },
+           "streamSettings": {
+           "network": "hysteria",
+           "security": "tls", // 1. 开启 TLS 安全性
+           "hysteriaSettings": {
+               "version": 2
             },
-            "streamSettings":{
-            "network": "hysteria",
-            "hysteriaSettings": {
-                "version": 2
-              },
-			  "security": "none",
-           }
-        }
+           "tlsSettings": {
+              "certificates": [
+                {
+                "certificateFile": "/home/alca158/domains/alca158.serv00.net/cert.pem", // 2. 填入你的证书绝对路径
+                "keyFile": "/home/alca158/domains/alca158.serv00.net/cert.key"      // 3. 填入你的私钥绝对路径
+                }
+              ]
+            }
+         }
+      }
     ],
     "outbounds": [
       {
