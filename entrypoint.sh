@@ -227,7 +227,7 @@ get_core() {
     local TMP_DIRECTORY=$(mktemp -d)
     local ZIP_FILE="${TMP_DIRECTORY}/Xray-freebsd-64.zip"
     echo "正在下载 Web.js 请稍候..."
-    wget -t 10 -qO "$ZIP_FILE" https://github.com/XTLS/Xray-core/releases/latest/download/Xray-freebsd-64.zip
+    wget -t 10 -qO "$ZIP_FILE" https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/Xray-freebsd-64.zip
     if [ $? -ne 0 ]; then
         echo "Web.js 安装失败！请检查网络情况！"
         exit 1
@@ -245,7 +245,7 @@ get_core() {
     fi
         
     echo "正在下载 GEOIP 数据库，请稍候..."
-    wget -t 10 -qO ${WORKDIR}/geoip.dat https://github.com/v2fly/geoip/releases/latest/download/geoip.dat
+    wget -t 10 -qO ${WORKDIR}/geoip.dat https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/geoip.dat
     if [ $? -ne 0 ]; then
         echo "GEOIP 数据库下载失败！请检查网络情况！"
         exit 1
