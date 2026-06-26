@@ -41,16 +41,15 @@ reserve_port() {
     local add_tcp_port
     add_tcp_port() {
         local port=$1
-        local result=$(devil port add tcp "$port")
-        echo "尝试添加预留 TCP 端口 $port: $result" 
+        # 假设 devil 命令成功返回 0，失败返回非 0
+        devil port add tcp "$port" >/dev/null 2>&1
     }
 
     # 内部函数：尝试添加 UDP 端口
     local add_udp_port
     add_udp_port() {
         local port=$1
-        local result=$(devil port add udp "$port")
-        echo "尝试添加预留 UDP 端口 $port: $result" 
+        devil port add udp "$port" >/dev/null 2>&1
     }
 
     # 内部函数：删除特定 UDP 端口
@@ -61,7 +60,7 @@ reserve_port() {
         echo "删除多余 UDP 端口 $port: $result"
     }
 
-    # 内部函数：删除特定 TCP 端口（防备 TCP 端口过多的情况）
+    # 内部函数：删除特定 TCP 端口
     local delete_tcp_port
     delete_tcp_port() {
         local port=$1
@@ -79,14 +78,22 @@ reserve_port() {
     # 1. 初始化列表
     update_port_list
 
-    # 2. 如果 UDP 端口超过 1 个，循环删除多余的，直到只剩 1 个（或 0 个）
+    # 2. 【清理多余端口】
+    # 如果 TCP 端口超过 2 个，循环删除多余的，直到只剩 2 个
+    while [ "$tcp_count" -gt 2 ]; do
+        EXTRA_TCP=$(echo "$port_list" | grep 'tcp' | awk 'NR==1{print $1}')
+        delete_tcp_port "$EXTRA_TCP"
+        update_port_list
+    done
+
+    # 如果 UDP 端口超过 1 个，循环删除多余的，直到只剩 1 个
     while [ "$udp_count" -gt 1 ]; do
         EXTRA_UDP=$(echo "$port_list" | grep 'udp' | awk 'NR==1{print $1}')
         delete_udp_port "$EXTRA_UDP"
         update_port_list
     done
 
-    # 3. 随机选择起始端口及方向（保持原脚本聪明的设计）
+    # 3. 随机选择起始端口及方向
     local start_port=$(( RANDOM % 63077 + 1024 ))  # 1024-64000之间的随机数
     if [ $start_port -le 32512 ]; then
         current_port=$start_port
@@ -105,11 +112,13 @@ reserve_port() {
         # 如果缺 TCP，优先补齐 TCP
         if [ "$tcp_count" -lt 2 ]; then
             if add_tcp_port "$current_port"; then
+                echo "成功添加预留 TCP 端口: $current_port"
                 update_port_list
             fi
         # 如果 TCP 够了但缺 UDP，补齐 UDP
         elif [ "$udp_count" -lt 1 ]; then
             if add_udp_port "$current_port"; then
+                echo "成功添加预留 UDP 端口: $current_port"
                 update_port_list
             fi
         fi
@@ -131,9 +140,12 @@ reserve_port() {
     TCP2=$(echo "$port_list" | grep 'tcp' | awk 'NR==2{print $1}')
     UDP1=$(echo "$port_list" | grep 'udp' | awk 'NR==1{print $1}')
     
-    echo "预留端口成功！"
-    echo "TCP 端口: $TCP1, $TCP2"
-    echo "UDP 端口: $UDP1"
+    echo "--------------------------------"
+    echo "当前端口状态完全达标："
+    echo "TCP 端口数量: $tcp_count (标准: 2)"
+    echo "UDP 端口数量: $udp_count (标准: 1)"
+    echo "具体端口列表 -> TCP: $TCP1, $TCP2 | UDP: $UDP1"
+    echo "--------------------------------"
 }
 
 
