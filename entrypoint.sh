@@ -312,7 +312,7 @@ generate_config() {
             }
         },
 		{
-           "port": 16152,
+           "port": ${UDP1},
            "listen": "127.0.0.1",
            "protocol": "hysteria",
            "settings": {
