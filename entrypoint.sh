@@ -316,7 +316,7 @@ generate_config() {
            "listen": "127.0.0.1",
            "protocol": "hysteria",
            "settings": {
-                "auth": "7cc7f65e-7641-436a-8dde-5d49b5b183fb",
+                "auth": "${UUID}",
                 "level": 0
            },
            "streamSettings": {
