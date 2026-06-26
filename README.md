@@ -62,7 +62,7 @@ bash <(curl -Ls https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/entrypoi
 
 >如果需要重置，请使用命令：
 >```shell
->bash <(curl -Ls https://raw.githubusercontent.com/k0baya/x-for-serv00/main/reset.sh)
+>bash <(curl -Ls https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/reset.sh)
 >```
 >请勿轻易使用此命令！
 ### 自动启动
