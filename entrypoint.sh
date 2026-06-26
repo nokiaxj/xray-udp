@@ -420,7 +420,7 @@ ingress:
     service: http://localhost:\${TCP1}
   - hostname: \$ARGO_DOMAIN_TR
     service: http://localhost:\${TCP2}
-  - hostname: \$ARGO_DOMAIN_hy2
+  - hostname: \$ARGO_DOMAIN_HY2
     service: http://localhost:\${UDP1}
     originRequest:
       noTLSVerify: true
