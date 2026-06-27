@@ -2,6 +2,7 @@
 
 USERNAME=$(whoami)
 USERNAME_DOMAIN=$(whoami | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
+CURRENT_DOMAIN="serv00.net"
 WORKDIR="/home/${USERNAME}/domains/${USERNAME_DOMAIN}.serv00.net/public_nodejs"
 WSPATH=${WSPATH:-'serv00'}
 UUID=${UUID:-'de04add9-5c68-8bab-950c-08cd5320df18'}
@@ -171,10 +172,6 @@ generate_dotenv() {
     read -r ARGO_DOMAIN_TR
     echo "请在Cloudflare中为隧道添加域名 ${ARGO_DOMAIN_VM} 指向 HTTP://localhost:${TCP2},添加完成请按回车继续"
     read
-    printf "请输入 ARGO_DOMAIN_HY2（必填）："
-    read -r ARGO_DOMAIN_HY2
-    echo "请在Cloudflare中为隧道添加域名 ${ARGO_DOMAIN_TR} 指向 HTTP://localhost:${UDP1},添加完成请按回车继续"
-    read
     printf "请输入 UUID（默认值：f6e23862-46a0-4418-98e9-a7d7c0b5df43）："
     read -r UUID
     printf "请输入 WSPATH（默认值：serv00）："
@@ -184,7 +181,7 @@ generate_dotenv() {
     printf "请输入 WEB_PASSWORD（默认值：password）："
     read -r WEB_PASSWORD
 
-    if [ -z "${ARGO_AUTH}" ] || [ -z "${ARGO_DOMAIN_VL}" ] || [ -z "${ARGO_DOMAIN_TR}" ] || [ -z "${ARGO_DOMAIN_HY2}" ]; then
+    if [ -z "${ARGO_AUTH}" ] || [ -z "${ARGO_DOMAIN_VL}" ] || [ -z "${ARGO_DOMAIN_TR}" ]; then
     echo "Error! 所有选项都不能为空！"
     rm -rf ${WORKDIR}/*
     rm -rf ${WORKDIR}/.*
@@ -209,7 +206,6 @@ generate_dotenv() {
 ARGO_AUTH=${ARGO_AUTH}
 ARGO_DOMAIN_VL=${ARGO_DOMAIN_VL}
 ARGO_DOMAIN_TR=${ARGO_DOMAIN_TR}
-ARGO_DOMAIN_HY2=${ARGO_DOMAIN_HY2}
 UUID=${UUID}
 WSPATH=${WSPATH}
 WEB_USERNAME=${WEB_USERNAME}
@@ -265,6 +261,10 @@ get_core() {
 }
 
 generate_config() {
+
+      openssl ecparam -genkey -name prime256v1 -out "private.key"
+      openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.${CURRENT_DOMAIN}"
+		
     cat > ${WORKDIR}/config.json << EOF
 {
     "log": {
@@ -327,8 +327,8 @@ generate_config() {
            "tlsSettings": {
               "certificates": [
                 {
-                "certificateFile": "/home/alca158/domains/alca158.serv00.net/cert.pem", // 2. 填入你的证书绝对路径
-                "keyFile": "/home/alca158/domains/alca158.serv00.net/cert.key"      // 3. 填入你的私钥绝对路径
+                "certificateFile": "cert.pem", // 2. 填入你的证书绝对路径
+                "keyFile": "private.key"      // 3. 填入你的私钥绝对路径
                 }
               ]
             }
@@ -406,7 +406,7 @@ check_file() {
 
 
 run() {
-        if [[ -n "\${ARGO_AUTH}" && -n "\${ARGO_DOMAIN_VL}" && -n "\${ARGO_DOMAIN_TR}" && -n "\${ARGO_DOMAIN_HY2}" ]]; then
+        if [[ -n "\${ARGO_AUTH}" && -n "\${ARGO_DOMAIN_VL}" && -n "\${ARGO_DOMAIN_TR}" ]]; then
         if [[ "\$ARGO_AUTH" =~ TunnelSecret ]]; then
             echo "\$ARGO_AUTH" | sed 's@{@{"@g;s@[,:]@"\0"@g;s@}@"}@g' > \${WORKDIR}/tunnel.json
             cat > \${WORKDIR}/tunnel.yml << EOF
@@ -419,8 +419,6 @@ ingress:
     service: http://localhost:\${TCP1}
   - hostname: \$ARGO_DOMAIN_TR
     service: http://localhost:\${TCP2}
-  - hostname: \$ARGO_DOMAIN_HY2
-    service: http://localhost:\${UDP1}
     originRequest:
       noTLSVerify: true
   - service: http_status:404
@@ -430,7 +428,7 @@ EOF
             nohup ./cloudflared tunnel --edge-ip-version auto --protocol http2 run --token \${ARGO_AUTH} > /dev/null 2>&1 &
         fi
     else
-        echo '请设置环境变量 \$ARGO_AUTH 和 \$ARGO_DOMAIN_TR、\$ARGO_DOMAIN_VL、\$ARGO_DOMAIN_HY2' > \${WORKDIR}/list
+        echo '请设置环境变量 \$ARGO_AUTH 和 \$ARGO_DOMAIN_TR、\$ARGO_DOMAIN_VL > \${WORKDIR}/list
         exit 1
     fi
     }
@@ -445,7 +443,7 @@ vless://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2F${WSPATH}-vless%3F
 ----------------------------
 trojan://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2F${WSPATH}-trojan%3Fed%3D2560&security=tls&host=\${ARGO_DOMAIN_TR}&type=ws&sni=\${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan
 ----------------------------
-hysteria2://${UUID}@host=\${ARGO_DOMAIN_HY2}:443?sni=${ARGO_DOMAIN_HY2}&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
+hysteria2://${UUID}@host=\${USERNAME_DOMAIN}.serv00.net:${UDP1}?sni=${USERNAME_DOMAIN}.serv00.net&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
 *******************************************
 小火箭:
 ----------------------------
