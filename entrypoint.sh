@@ -260,6 +260,10 @@ get_core() {
 }
 
 generate_config() {	
+
+      openssl ecparam -genkey -name prime256v1 -out "private.key"
+      openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.serv00.net"
+	  
     cat > ${WORKDIR}/config.json << EOF
 {
     "log": {
