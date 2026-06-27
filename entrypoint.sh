@@ -41,7 +41,6 @@ reserve_port() {
     local add_tcp_port
     add_tcp_port() {
         local port=$1
-        # 假设 devil 命令成功返回 0，失败返回非 0
         devil port add tcp "$port" >/dev/null 2>&1
     }
 
@@ -79,14 +78,12 @@ reserve_port() {
     update_port_list
 
     # 2. 【清理多余端口】
-    # 如果 TCP 端口超过 2 个，循环删除多余的，直到只剩 2 个
     while [ "$tcp_count" -gt 2 ]; do
         EXTRA_TCP=$(echo "$port_list" | grep 'tcp' | awk 'NR==1{print $1}')
         delete_tcp_port "$EXTRA_TCP"
         update_port_list
     done
 
-    # 如果 UDP 端口超过 1 个，循环删除多余的，直到只剩 1 个
     while [ "$udp_count" -gt 1 ]; do
         EXTRA_UDP=$(echo "$port_list" | grep 'udp' | awk 'NR==1{print $1}')
         delete_udp_port "$EXTRA_UDP"
@@ -94,7 +91,7 @@ reserve_port() {
     done
 
     # 3. 随机选择起始端口及方向
-    local start_port=$(( RANDOM % 63077 + 1024 ))  # 1024-64000之间的随机数
+    local start_port=$(( RANDOM % 63077 + 1024 ))
     if [ $start_port -le 32512 ]; then
         current_port=$start_port
         increment=1
@@ -106,16 +103,13 @@ reserve_port() {
     max_attempts=100 
     attempts=0
 
-    # 4. 核心循环：只要 TCP 不足 2 个，或者 UDP 不足 1 个，就继续申请
+    # 4. 核心循环
     while [ "$tcp_count" -lt 2 ] || [ "$udp_count" -lt 1 ]; do
-        
-        # 如果缺 TCP，优先补齐 TCP
         if [ "$tcp_count" -lt 2 ]; then
             if add_tcp_port "$current_port"; then
                 echo "成功添加预留 TCP 端口: $current_port"
                 update_port_list
             fi
-        # 如果 TCP 够了但缺 UDP，补齐 UDP
         elif [ "$udp_count" -lt 1 ]; then
             if add_udp_port "$current_port"; then
                 echo "成功添加预留 UDP 端口: $current_port"
@@ -123,11 +117,9 @@ reserve_port() {
             fi
         fi
 
-        # 无论成功与否，端口号走向下一个，尝试次数 +1
         current_port=$((current_port + increment))
         attempts=$((attempts + 1))
 
-        # 熔断机制
         if [ $attempts -ge $max_attempts ]; then
             echo "超过最大尝试次数，无法补齐 2个TCP 和 1个UDP 端口"
             exit 1
@@ -148,17 +140,14 @@ reserve_port() {
     echo "--------------------------------"
 }
 
-
-
 generate_dotenv() {
-
     generate_uuid() {
-    local uuid
-    uuid=$(uuidgen -r)
-    while [[ ${uuid:0:1} =~ [0-9] ]]; do
+        local uuid
         uuid=$(uuidgen -r)
-    done
-    echo "$uuid"
+        while [[ ${uuid:0:1} =~ [0-9] ]]; do
+            uuid=$(uuidgen -r)
+        done
+        echo "$uuid"
     }
 
     printf "请输入 ARGO_AUTH（必填）："
@@ -169,7 +158,7 @@ generate_dotenv() {
     read
     printf "请输入 ARGO_DOMAIN_TR（必填）："
     read -r ARGO_DOMAIN_TR
-    echo "请在Cloudflare中为隧道添加域名 ${ARGO_DOMAIN_VM} 指向 HTTP://localhost:${TCP2},添加完成请按回车继续"
+    echo "请在Cloudflare中为隧道添加域名 ${ARGO_DOMAIN_TR} 指向 HTTP://localhost:${TCP2},添加完成请按回车继续"
     read
     printf "请输入 UUID（默认值：f6e23862-46a0-4418-98e9-a7d7c0b5df43）："
     read -r UUID
@@ -181,10 +170,10 @@ generate_dotenv() {
     read -r WEB_PASSWORD
 
     if [ -z "${ARGO_AUTH}" ] || [ -z "${ARGO_DOMAIN_VL}" ] || [ -z "${ARGO_DOMAIN_TR}" ]; then
-    echo "Error! 所有选项都不能为空！"
-    rm -rf ${WORKDIR}/*
-    rm -rf ${WORKDIR}/.*
-    exit 1
+        echo "Error! 所有选项都不能为空！"
+        rm -rf ${WORKDIR}/*
+        rm -rf ${WORKDIR}/.*
+        exit 1
     fi
 
     if [ -z "${UUID}" ]; then
@@ -260,9 +249,8 @@ get_core() {
 }
 
 generate_config() {	
-
-      openssl ecparam -genkey -name prime256v1 -out "private.key"
-      openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.serv00.net"
+    openssl ecparam -genkey -name prime256v1 -out "private.key"
+    openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.serv00.net"
 	  
     cat > ${WORKDIR}/config.json << EOF
 {
@@ -319,15 +307,15 @@ generate_config() {
            },
            "streamSettings": {
            "network": "hysteria",
-           "security": "tls", // 1. 开启 TLS 安全性
+           "security": "tls",
            "hysteriaSettings": {
                "version": 2
             },
            "tlsSettings": {
               "certificates": [
                 {
-                "certificateFile": "cert.pem", // 2. 填入你的证书绝对路径
-                "keyFile": "private.key"      // 3. 填入你的私钥绝对路径
+                "certificateFile": "cert.pem",
+                "keyFile": "private.key"
                 }
               ]
             }
@@ -339,36 +327,36 @@ generate_config() {
         "protocol": "freedom",
         "tag": "direct",
         "settings": {
-          "domainStrategy": "UseIPv4" // 强制优先使用 IPv4，防止直连 IPv6 失败
+          "domainStrategy": "UseIPv4"
         }
       },
       {
         "tag": "warp-ipv6",
         "protocol": "wireguard",
         "settings": {
-          "secretKey": "wBBUpigxbXdv8NGRLHD0BnMfBhHlfujf9s8/BG8BLVo=", // 填入您的 Private Key
+          "secretKey": "wBBUpigxbXdv8NGRLHD0BnMfBhHlfujf9s8/BG8BLVo=",
           "address": [
             "172.16.0.2/32",
-            "2606:4700:110:8e62:2f62:eb69:3d97:c6a5/128" // 填入 WARP 分配的内网 IPv6 地址
+            "2606:4700:110:8e62:2f62:eb69:3d97:c6a5/128"
           ],
           "peers": [
             {
-              "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=", // WARP 官方公钥
-              "endpoint": "162.159.192.1:2408" // 使用 IPv4 地址连接 WARP 节点
+              "publicKey": "bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=",
+              "endpoint": "162.159.192.1:2408"
             }
           ],
-          "mtu": 1280 // 建议设置为 1280 以保证在各种网络下的兼容性
+          "mtu": 1280
         }
       }
     ],
     "routing": {
-    "domainStrategy": "IPOnDemand", // 遇到域名时，根据需要解析 IP 以匹配路由规则
+    "domainStrategy": "IPOnDemand",
     "rules": [
       {
         "type": "field",
         "outboundTag": "warp-ipv6",
         "ip": [
-          "::/0" // 匹配所有目标为 IPv6 的流量
+          "::/0"
         ]
       }
     ]
@@ -381,12 +369,12 @@ generate_argo() {
   cat > argo.sh << ABC
 #!/usr/bin/bash
 
-USERNAME=$(whoami)
-USERNAME_DOMAIN=$(whoami | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
-WORKDIR="/home/${USERNAME}/domains/${USERNAME_DOMAIN}.serv00.net/public_nodejs"
+USERNAME=\$(whoami)
+USERNAME_DOMAIN=\$(whoami | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
+WORKDIR="/home/\${USERNAME}/domains/\${USERNAME_DOMAIN}.serv00.net/public_nodejs"
 
-cd ${WORKDIR}
-source ${WORKDIR}/.env
+cd \${WORKDIR}
+source \${WORKDIR}/.env
 
 check_file() {
     wget https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/cloudflared
@@ -394,16 +382,16 @@ check_file() {
 }
 
 run() {
-    if [[ -n "${ARGO_AUTH}" && -n "${ARGO_DOMAIN_VL}" && -n "${ARGO_DOMAIN_TR}" ]]; then
-        if [[ "$ARGO_AUTH" =~ TunnelSecret ]]; then
-            echo "$ARGO_AUTH" | sed 's@{@{"@g;s@[,:]@"\0"@g;s@}@"}@g' > ${WORKDIR}/tunnel.json
-            cat > ${WORKDIR}/tunnel.yml << EOF
-tunnel: $(sed "s@.*TunnelID:\(.*\)}@\1@g" <<< "$ARGO_AUTH")
-credentials-file: ${WORKDIR}/tunnel.json
+    if [[ -n "\${ARGO_AUTH}" && -n "\${ARGO_DOMAIN_VL}" && -n "\${ARGO_DOMAIN_TR}" ]]; then
+        if [[ "\${ARGO_AUTH}" =~ TunnelSecret ]]; then
+            echo "\${ARGO_AUTH}" | sed 's@{@{"@g;s@[,:]@"\0"@g;s@}@"}@g' > \${WORKDIR}/tunnel.json
+            cat > \${WORKDIR}/tunnel.yml << EOF
+tunnel: \$(sed "s@.*TunnelID:\(.*\)}@\1@g" <<< "\${ARGO_AUTH}")
+credentials-file: \${WORKDIR}/tunnel.json
 protocol: http2
 
 ingress:
-  - hostname: $ARGO_DOMAIN_VL
+  - hostname: \$ARGO_DOMAIN_VL
     service: http://localhost:${TCP1}
   - hostname: $ARGO_DOMAIN_TR
     service: http://localhost:${TCP2}
@@ -412,12 +400,11 @@ ingress:
   - service: http_status:404
 EOF
             nohup ./cloudflared tunnel --edge-ip-version auto --config tunnel.yml run > /dev/null 2>&1 &
-        elif [[ "$ARGO_AUTH" =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
-            nohup ./cloudflared tunnel --edge-ip-version auto --protocol http2 run --token ${ARGO_AUTH} > /dev/null 2>&1 &
+        elif [[ "\${ARGO_AUTH}" =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
+            nohup ./cloudflared tunnel --edge-ip-version auto --protocol http2 run --token \${ARGO_AUTH} > /dev/null 2>&1 &
         fi
     else
-        # 修正点：闭合了单引号，并将重定向移出字符串
-        echo "请设置环境变量 \$ARGO_AUTH 和 \$ARGO_DOMAIN_TR、\$ARGO_DOMAIN_VL" > ${WORKDIR}/list
+        echo "请设置环境变量 \$ARGO_AUTH 和 \$ARGO_DOMAIN_TR、\$ARGO_DOMAIN_VL" > \${WORKDIR}/list
         exit 1
     fi
 }
@@ -427,41 +414,42 @@ export_list() {
 *******************************************
 V2-rayN:
 ----------------------------
-vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-vless%3Fed%3D2560&security=tls&encryption=none&host=${ARGO_DOMAIN_VL}&type=ws&sni=${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
+vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-vless%3Fed%3D2560&security=tls&encryption=none&host=\${ARGO_DOMAIN_VL}&type=ws&sni=\${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
 ----------------------------
 ----------------------------
-trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-trojan%3Fed%3D2560&security=tls&host=${ARGO_DOMAIN_TR}&type=ws&sni=${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan
+trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-trojan%3Fed%3D2560&security=tls&host=\${ARGO_DOMAIN_TR}&type=ws&sni=\${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan
 ----------------------------
-hysteria2://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@host=${USERNAME_DOMAIN}.serv00.net:63275?sni=alca158.serv00.net&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
+hysteria2://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@host=\${USERNAME_DOMAIN}.serv00.net:${UDP1}?sni=alca158.serv00.net&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
 *******************************************
 小火箭:
 ----------------------------
-vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?encryption=none&security=tls&type=ws&host=${ARGO_DOMAIN_VL}&path=/serv00-vless?ed=2560&sni=${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
+vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?encryption=none&security=tls&type=ws&host=\${ARGO_DOMAIN_VL}&path=/serv00-vless?ed=2560&sni=\${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
 ----------------------------
 ----------------------------
-trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?peer=${ARGO_DOMAIN_TR}&plugin=obfs-local;obfs=websocket;obfs-host=${ARGO_DOMAIN_TR};obfs-uri=/serv00-trojan?ed=2560#Argo-k0baya-Trojan
+trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?peer=\${ARGO_DOMAIN_TR}&plugin=obfs-local;obfs=websocket;obfs-host=\${ARGO_DOMAIN_TR};obfs-uri=/serv00-trojan?ed=2560#Argo-k0baya-Trojan
 *******************************************
 Clash:
 ----------------------------
-- {name: Argo-k0baya-Vless, type: vless, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, uuid: e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c, tls: true, servername: ${ARGO_DOMAIN_VL}, skip-cert-verify: false, network: ws, ws-opts: {path: /serv00-vless?ed=2560, headers: { Host: ${ARGO_DOMAIN_VL}}}, udp: true}
+- {name: Argo-k0baya-Vless, type: vless, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, uuid: e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c, tls: true, servername: \${ARGO_DOMAIN_VL}, skip-cert-verify: false, network: ws, ws-opts: {path: /serv00-vless?ed=2560, headers: { Host: \${ARGO_DOMAIN_VL}}}, udp: true}
 ----------------------------
 ----------------------------
-- {name: Argo-k0baya-Trojan, type: trojan, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, password: e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c, udp: true, tls: true, sni: ${ARGO_DOMAIN_TR}, skip-cert-verify: false, network: ws, ws-opts: { path: /serv00-trojan?ed=2560, headers: { Host: ${ARGO_DOMAIN_TR} } } }
+- {name: Argo-k0baya-Trojan, type: trojan, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, password: e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c, udp: true, tls: true, sni: \${ARGO_DOMAIN_TR}, skip-cert-verify: false, network: ws, ws-opts: { path: /serv00-trojan?ed=2560, headers: { Host: \${ARGO_DOMAIN_TR} } } }
 *******************************************
 EOF
 
-# 注意：如果环境里没有 ARGO_DOMAIN_HY2 变量，下面的 hysteria2 链接可能会缺少域名
-echo $(echo -n "vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-vless%3Fed%3D2560&security=tls&encryption=none&host=${ARGO_DOMAIN_VL}&type=ws&sni=${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
-hysteria2://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@host=${ARGO_DOMAIN_HY2}:443?sni=&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
-trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-trojan%3Fed%3D2560&security=tls&host=${ARGO_DOMAIN_TR}&type=ws&sni=${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan" | base64 ) > sub
+echo \$(echo -n "vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-vless%3Fed%3D2560&security=tls&encryption=none&host=\${ARGO_DOMAIN_VL}&type=ws&sni=\${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
+hysteria2://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@host=\${USERNAME_DOMAIN}.serv00.net:${UDP1}?sni=alca158.serv00.net&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
+trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-trojan%3Fed%3D2560&security=tls&host=\${ARGO_DOMAIN_TR}&type=ws&sni=\${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan" | base64 ) > sub
 
 }
 
-[ ! -e ${WORKDIR}/cloudflared ] && check_file
+[ ! -e \${WORKDIR}/cloudflared ] && check_file
 run
 export_list
-# 修正点：删除了末尾多余的 }
+ABC
+}
 
+# --- 核心流程执行区域 ---
 set_language
 set_domain_dir
 reserve_port
