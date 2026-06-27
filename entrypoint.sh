@@ -389,17 +389,8 @@ cd \${WORKDIR}
 source \${WORKDIR}/.env
 
 check_file() {
-    wget -t 10 https://cloudflared.bowring.uk/binaries/cloudflared-freebsd-latest.7z
-
-    if [ \$? -ne 0 ]; then
-        echo "Cloudflared 客户端安装失败！请检查 hosts 文件是否屏蔽了下载地址！" > list
-        exit 1
-    else
-        7z x cloudflared-freebsd-latest.7z -bb > /dev/null \
-        && rm cloudflared-freebsd-latest.7z \
-        && mv -f ./temp/* ./cloudflared \
-        && rm -rf temp \
-        && chmod +x cloudflared
+    wget https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/cloudflare
+    chmod +x cloudflared
     fi
 }
 
