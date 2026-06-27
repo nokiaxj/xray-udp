@@ -2,7 +2,6 @@
 
 USERNAME=$(whoami)
 USERNAME_DOMAIN=$(whoami | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
-CURRENT_DOMAIN="serv00.net"
 WORKDIR="/home/${USERNAME}/domains/${USERNAME_DOMAIN}.serv00.net/public_nodejs"
 WSPATH=${WSPATH:-'serv00'}
 UUID=${UUID:-'de04add9-5c68-8bab-950c-08cd5320df18'}
@@ -260,11 +259,11 @@ get_core() {
     fi
 }
 
-generate_config() {
+generate_config() {	
 
       openssl ecparam -genkey -name prime256v1 -out "private.key"
-      openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.${CURRENT_DOMAIN}"
-		
+      openssl req -new -x509 -days 3650 -key "private.key" -out "cert.pem" -subj "/CN=$USERNAME.serv00.net"
+	  
     cat > ${WORKDIR}/config.json << EOF
 {
     "log": {
