@@ -381,86 +381,86 @@ generate_argo() {
   cat > argo.sh << ABC
 #!/usr/bin/bash
 
-USERNAME=\$(whoami)
-USERNAME_DOMAIN=\$(whoami | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
-WORKDIR="/home/\${USERNAME}/domains/\${USERNAME_DOMAIN}.serv00.net/public_nodejs"
+USERNAME=$(whoami)
+USERNAME_DOMAIN=$(whoami | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]//g')
+WORKDIR="/home/${USERNAME}/domains/${USERNAME_DOMAIN}.serv00.net/public_nodejs"
 
-cd \${WORKDIR}
-source \${WORKDIR}/.env
+cd ${WORKDIR}
+source ${WORKDIR}/.env
 
 check_file() {
-    wget https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/cloudflare
+    wget https://github.com/nokiaxj/xray-udp/raw/refs/heads/main/cloudflared
     chmod +x cloudflared
-    fi
 }
 
-
 run() {
-        if [[ -n "\${ARGO_AUTH}" && -n "\${ARGO_DOMAIN_VL}" && -n "\${ARGO_DOMAIN_TR}" ]]; then
-        if [[ "\$ARGO_AUTH" =~ TunnelSecret ]]; then
-            echo "\$ARGO_AUTH" | sed 's@{@{"@g;s@[,:]@"\0"@g;s@}@"}@g' > \${WORKDIR}/tunnel.json
-            cat > \${WORKDIR}/tunnel.yml << EOF
-tunnel: \$(sed "s@.*TunnelID:\(.*\)}@\1@g" <<< "\$ARGO_AUTH")
-credentials-file: \${WORKDIR}/tunnel.json
+    if [[ -n "${ARGO_AUTH}" && -n "${ARGO_DOMAIN_VL}" && -n "${ARGO_DOMAIN_TR}" ]]; then
+        if [[ "$ARGO_AUTH" =~ TunnelSecret ]]; then
+            echo "$ARGO_AUTH" | sed 's@{@{"@g;s@[,:]@"\0"@g;s@}@"}@g' > ${WORKDIR}/tunnel.json
+            cat > ${WORKDIR}/tunnel.yml << EOF
+tunnel: $(sed "s@.*TunnelID:\(.*\)}@\1@g" <<< "$ARGO_AUTH")
+credentials-file: ${WORKDIR}/tunnel.json
 protocol: http2
 
 ingress:
-  - hostname: \$ARGO_DOMAIN_VL
-    service: http://localhost:\${TCP1}
-  - hostname: \$ARGO_DOMAIN_TR
-    service: http://localhost:\${TCP2}
+  - hostname: $ARGO_DOMAIN_VL
+    service: http://localhost:${TCP1}
+  - hostname: $ARGO_DOMAIN_TR
+    service: http://localhost:${TCP2}
     originRequest:
       noTLSVerify: true
   - service: http_status:404
 EOF
             nohup ./cloudflared tunnel --edge-ip-version auto --config tunnel.yml run > /dev/null 2>&1 &
-        elif [[ "\$ARGO_AUTH" =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
-            nohup ./cloudflared tunnel --edge-ip-version auto --protocol http2 run --token \${ARGO_AUTH} > /dev/null 2>&1 &
+        elif [[ "$ARGO_AUTH" =~ ^[A-Z0-9a-z=]{120,250}$ ]]; then
+            nohup ./cloudflared tunnel --edge-ip-version auto --protocol http2 run --token ${ARGO_AUTH} > /dev/null 2>&1 &
         fi
     else
-        echo '请设置环境变量 \$ARGO_AUTH 和 \$ARGO_DOMAIN_TR、\$ARGO_DOMAIN_VL > \${WORKDIR}/list
+        # 修正点：闭合了单引号，并将重定向移出字符串
+        echo "请设置环境变量 \$ARGO_AUTH 和 \$ARGO_DOMAIN_TR、\$ARGO_DOMAIN_VL" > ${WORKDIR}/list
         exit 1
     fi
-    }
+}
 
 export_list() {
    cat > list << EOF
 *******************************************
 V2-rayN:
 ----------------------------
-vless://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2F${WSPATH}-vless%3Fed%3D2560&security=tls&encryption=none&host=\${ARGO_DOMAIN_VL}&type=ws&sni=\${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
+vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-vless%3Fed%3D2560&security=tls&encryption=none&host=${ARGO_DOMAIN_VL}&type=ws&sni=${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
 ----------------------------
 ----------------------------
-trojan://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2F${WSPATH}-trojan%3Fed%3D2560&security=tls&host=\${ARGO_DOMAIN_TR}&type=ws&sni=\${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan
+trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-trojan%3Fed%3D2560&security=tls&host=${ARGO_DOMAIN_TR}&type=ws&sni=${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan
 ----------------------------
-hysteria2://${UUID}@host=\${USERNAME_DOMAIN}.serv00.net:${UDP1}?sni=${USERNAME_DOMAIN}.serv00.net&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
+hysteria2://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@host=${USERNAME_DOMAIN}.serv00.net:63275?sni=alca158.serv00.net&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
 *******************************************
 小火箭:
 ----------------------------
-vless://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?encryption=none&security=tls&type=ws&host=\${ARGO_DOMAIN_VL}&path=/${WSPATH}-vless?ed=2560&sni=\${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
+vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?encryption=none&security=tls&type=ws&host=${ARGO_DOMAIN_VL}&path=/serv00-vless?ed=2560&sni=${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
 ----------------------------
 ----------------------------
-trojan://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?peer=\${ARGO_DOMAIN_TR}&plugin=obfs-local;obfs=websocket;obfs-host=\${ARGO_DOMAIN_TR};obfs-uri=/${WSPATH}-trojan?ed=2560#Argo-k0baya-Trojan
+trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?peer=${ARGO_DOMAIN_TR}&plugin=obfs-local;obfs=websocket;obfs-host=${ARGO_DOMAIN_TR};obfs-uri=/serv00-trojan?ed=2560#Argo-k0baya-Trojan
 *******************************************
 Clash:
 ----------------------------
-- {name: Argo-k0baya-Vless, type: vless, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, uuid: ${UUID}, tls: true, servername: \${ARGO_DOMAIN_VL}, skip-cert-verify: false, network: ws, ws-opts: {path: /${WSPATH}-vless?ed=2560, headers: { Host: \${ARGO_DOMAIN_VL}}}, udp: true}
+- {name: Argo-k0baya-Vless, type: vless, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, uuid: e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c, tls: true, servername: ${ARGO_DOMAIN_VL}, skip-cert-verify: false, network: ws, ws-opts: {path: /serv00-vless?ed=2560, headers: { Host: ${ARGO_DOMAIN_VL}}}, udp: true}
 ----------------------------
 ----------------------------
-- {name: Argo-k0baya-Trojan, type: trojan, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, password: ${UUID}, udp: true, tls: true, sni: \${ARGO_DOMAIN_TR}, skip-cert-verify: false, network: ws, ws-opts: { path: /${WSPATH}-trojan?ed=2560, headers: { Host: \${ARGO_DOMAIN_TR} } } }
+- {name: Argo-k0baya-Trojan, type: trojan, server: upos-sz-mirrorcf1ov.bilivideo.com, port: 443, password: e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c, udp: true, tls: true, sni: ${ARGO_DOMAIN_TR}, skip-cert-verify: false, network: ws, ws-opts: { path: /serv00-trojan?ed=2560, headers: { Host: ${ARGO_DOMAIN_TR} } } }
 *******************************************
 EOF
 
-echo \$(echo -n "vless://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2F${WSPATH}-vless%3Fed%3D2560&security=tls&encryption=none&host=\${ARGO_DOMAIN_VL}&type=ws&sni=\${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
-hysteria2://${UUID}@host=\${ARGO_DOMAIN_HY2}:443?sni=${ARGO_DOMAIN_HY2}&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
-trojan://${UUID}@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2F${WSPATH}-trojan%3Fed%3D2560&security=tls&host=\${ARGO_DOMAIN_TR}&type=ws&sni=\${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan" | base64 ) > sub
+# 注意：如果环境里没有 ARGO_DOMAIN_HY2 变量，下面的 hysteria2 链接可能会缺少域名
+echo $(echo -n "vless://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-vless%3Fed%3D2560&security=tls&encryption=none&host=${ARGO_DOMAIN_VL}&type=ws&sni=${ARGO_DOMAIN_VL}#Argo-k0baya-Vless
+hysteria2://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@host=${ARGO_DOMAIN_HY2}:443?sni=&insecure=1&allowInsecure=1#hysteria2%E8%8A%82%E7%82%B9
+trojan://e6dec1c8-fbfe-424f-9a4e-0293a0e08a8c@upos-sz-mirrorcf1ov.bilivideo.com:443?path=%2Fserv00-trojan%3Fed%3D2560&security=tls&host=${ARGO_DOMAIN_TR}&type=ws&sni=${ARGO_DOMAIN_TR}#Argo-k0baya-Trojan" | base64 ) > sub
 
 }
-[ ! -e \${WORKDIR}/cloudflared ] && check_file
+
+[ ! -e ${WORKDIR}/cloudflared ] && check_file
 run
 export_list
-ABC
-}
+# 修正点：删除了末尾多余的 }
 
 set_language
 set_domain_dir
